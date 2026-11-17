@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Natasha — Estrellas y Mar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-void: #02030a;
+      --bg-cavern: #061026;
+      --box-bg: #000000;
+      --box-border: #ffffff;
+      --text-main: #ffffff;
+      --text-dim: #9ec5e5;
+      --soul-cyan: #42e8ff;
+      --echo-blue: #38bdf8;
+      --echo-glow: #7dd3fc;
+      --ui-orange: #ff8c00;
+      --ui-yellow: #ffff00;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      min-height: 100%;
+      background-color: var(--bg-void);
+      color: var(--text-main);
+      font-family: 'VT323', monospace;
+      overflow-x: hidden;
+      -webkit-font-smoothing: none;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.5rem 1rem 1.8rem;
+      position: relative;
+      background: radial-gradient(ellipse at 50% 15%, #0b1b3d 0%, #040814 55%, #000000 100%);
+    }
+
+    #waterfall-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .water-floor {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 95px;
+      background: linear-gradient(180deg, rgba(14, 116, 144, 0) 0%, rgba(14, 116, 144, 0.14) 45%, rgba(6, 182, 212, 0.25) 100%);
+      border-top: 2px dashed rgba(66, 232, 255, 0.22);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .hud-bar {
+      position: relative;
+      z-index: 5;
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding: 0.65rem 1rem;
+      background: var(--box-bg);
+      border: 4px solid var(--box-border);
+      box-shadow: 0 0 0 2px #000;
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(0.55rem, 1.8vw, 0.7rem);
+      letter-spacing: 0.04em;
+    }
+
+    .hud-stats {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .hud-location {
+      color: var(--echo-glow);
+    }
+
+    .hud-music-btn {
+      background: transparent;
+      border: 2px solid var(--soul-cyan);
+      color: var(--soul-cyan);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.56rem;
+      padding: 0.42rem 0.7rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    }
+
+    .hud-music-btn:hover {
+      background: var(--soul-cyan);
+      color: #000000;
+    }
+
+    .hud-music-btn.playing {
+      border-color: var(--ui-yellow);
+      color: var(--ui-yellow);
+      box-shadow: 0 0 10px rgba(255, 255, 0, 0.25);
+    }
+
+    .hud-music-btn.playing:hover {
+      background: var(--ui-yellow);
+      color: #000000;
+    }
+
+    .stage {
+      position: relative;
+      z-index: 5;
+      width: 100%;
+      max-width: 720px;
+      margin: 1.5rem 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .echo-scene {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .echo-flower-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem;
+      transition: transform 0.2s ease;
+    }
+
+    .echo-flower-btn:hover {
+      transform: scale(1.08);
+    }
+
+    .echo-flower-svg {
+      width: 52px;
+      height: 52px;
+      filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.75));
+      animation: floatFlower 3.5s ease-in-out infinite;
+    }
+
+    @keyframes floatFlower {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    .echo-tag {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.5rem;
+      color: var(--echo-glow);
+      text-shadow: 0 0 6px rgba(125, 211, 252, 0.6);
+    }
+
+    .echo-whisper {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.88);
+      border: 3px solid var(--echo-blue);
+      padding: 0.65rem 0.9rem;
+      font-size: 1.25rem;
+      line-height: 1.25;
+      color: var(--echo-glow);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+    }
+
+    .dialogue-box {
+      width: 100%;
+      background: var(--box-bg);
+      border: 5px solid var(--box-border);
+      box-shadow: 0 0 0 3px #000000, 0 0 30px rgba(66, 232, 255, 0.14);
+      padding: clamp(1.35rem, 4vw, 2.2rem);
+      position: relative;
+    }
+
+    .dialogue-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.35rem;
+      padding-bottom: 0.85rem;
+      border-bottom: 2px dashed rgba(255, 255, 255, 0.22);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.64rem;
+      color: var(--soul-cyan);
+    }
+
+    .soul-icon {
+      width: 18px;
+      height: 18px;
+      display: inline-block;
+      flex-shrink: 0;
+      animation: soulPulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes soulPulse {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(66, 232, 255, 0.7)); }
+      50% { transform: scale(1.14); filter: drop-shadow(0 0 10px rgba(66, 232, 255, 1)); }
+    }
+
+    .poem-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1.45rem;
+    }
+
+    .stanza {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      font-size: clamp(1.42rem, 3.6vw, 1.75rem);
+      line-height: 1.34;
+      color: var(--text-main);
+      opacity: 0;
+      transform: translateY(8px);
+      animation: stanzaAppear 0.65s ease forwards;
+    }
+
+    .stanza:nth-child(1) { animation-delay: 0.15s; }
+    .stanza:nth-child(2) { animation-delay: 0.45s; }
+    .stanza:nth-child(3) { animation-delay: 0.75s; }
+    .stanza:nth-child(4) { animation-delay: 1.05s; }
+    .stanza:nth-child(5) { animation-delay: 1.35s; }
+
+    @keyframes stanzaAppear {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .asterisk {
+      color: var(--text-main);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.85rem;
+      margin-top: 0.42rem;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .stanza p {
+      margin: 0;
+    }
+
+    .stanza:nth-child(2) .highlight-word {
+      color: var(--echo-glow);
+    }
+
+    .stanza:nth-child(4) .highlight-word {
+      color: #fde047;
+    }
+
+    .rpg-actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.95rem;
+    }
+
+    .rpg-btn {
+      background: var(--box-bg);
+      border: 3px solid var(--ui-orange);
+      color: var(--ui-orange);
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(0.6rem, 1.9vw, 0.74rem);
+      padding: 0.85rem 0.75rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      transition: all 0.12s ease;
+      text-transform: uppercase;
+    }
+
+    .rpg-btn:hover,
+    .rpg-btn.active {
+      border-color: var(--ui-yellow);
+      color: var(--ui-yellow);
+      box-shadow: 0 0 14px rgba(255, 255, 0, 0.25);
+    }
+
+    .rpg-btn .btn-heart {
+      opacity: 0;
+      transition: opacity 0.12s ease;
+    }
+
+    .rpg-btn:hover .btn-heart,
+    .rpg-btn.active .btn-heart {
+      opacity: 1;
+    }
+
+    .save-banner {
+      width: 100%;
+      background: var(--box-bg);
+      border: 4px solid var(--ui-yellow);
+      padding: 1rem 1.2rem;
+      color: var(--ui-yellow);
+      font-size: 1.38rem;
+      line-height: 1.3;
+      display: none;
+      animation: stanzaAppear 0.35s ease forwards;
+    }
+
+    .save-banner.visible {
+      display: block;
+    }
+
+    .autoplay-notice {
+      position: fixed;
+      bottom: 4.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      background: #000000;
+      border: 3px solid var(--soul-cyan);
+      color: var(--soul-cyan);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.55rem;
+      line-height: 1.5;
+      padding: 0.65rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 0 18px rgba(66, 232, 255, 0.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+      max-width: 92vw;
+    }
+
+    .autoplay-notice.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    footer {
+      position: relative;
+      z-index: 5;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.65rem;
+      padding-top: 0.75rem;
+      padding-bottom: 0.35rem;
+    }
+
+    .seven-souls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(0.6rem, 2.5vw, 1.15rem);
+      flex-wrap: wrap;
+    }
+
+    .soul-item {
+      width: 20px;
+      height: 20px;
+      transition: transform 0.2s ease;
+      animation: soulFloat 3s ease-in-out infinite;
+    }
+
+    .soul-item:nth-child(1) { animation-delay: 0s; filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.75)); }
+    .soul-item:nth-child(2) { animation-delay: 0.25s; filter: drop-shadow(0 0 6px rgba(66, 232, 255, 0.85)); }
+    .soul-item:nth-child(3) { animation-delay: 0.5s; filter: drop-shadow(0 0 6px rgba(255, 165, 0, 0.75)); }
+    .soul-item:nth-child(4) { animation-delay: 0.75s; filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.85)); }
+    .soul-item:nth-child(5) { animation-delay: 1s; filter: drop-shadow(0 0 6px rgba(192, 38, 211, 0.8)); }
+    .soul-item:nth-child(6) { animation-delay: 1.25s; filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.8)); }
+    .soul-item:nth-child(7) { animation-delay: 1.5s; filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.85)); }
+
+    .soul-item:hover {
+      transform: scale(1.3) translateY(-3px);
+    }
+
+    @keyframes soulFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    .dedication {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.55rem;
+      letter-spacing: 0.14em;
+      color: rgba(158, 197, 229, 0.52);
+      text-transform: lowercase;
+      user-select: none;
+    }
+
+    @media (max-width: 560px) {
+      .rpg-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .echo-scene {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .echo-whisper {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <audio id="bg-music" src="song.mp3" autoplay loop preload="auto"></audio>
+
+  <canvas id="waterfall-canvas"></canvas>
+  <div class="water-floor"></div>
+
+  <header class="hud-bar">
+    <div class="hud-stats">
+      <span class="hud-location">★ NATASHA - ESTRELLAS Y MAR</span>
+      <span>LV 1</span>
+      <span>HP 20/20</span>
+    </div>
+    <button id="hud-music-btn" class="hud-music-btn" type="button" title="Reproducir o pausar song.mp3">
+      <span id="hud-music-icon">▶</span>
+      <span id="hud-music-text">song.mp3</span>
+    </button>
+  </header>
+
+  <main class="stage">
+    <div class="echo-scene">
+      <button id="echo-flower-btn" class="echo-flower-btn" type="button" title="Escuchar Flor Eco">
+        <svg class="echo-flower-svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+          <rect x="7" y="10" width="2" height="6" fill="#15803d"/>
+          <rect x="5" y="12" width="2" height="1" fill="#22c55e"/>
+          <rect x="9" y="11" width="2" height="1" fill="#22c55e"/>
+          <rect x="6" y="2" width="4" height="2" fill="#38bdf8"/>
+          <rect x="4" y="4" width="8" height="4" fill="#0284c7"/>
+          <rect x="5" y="3" width="6" height="6" fill="#7dd3fc"/>
+          <rect x="7" y="5" width="2" height="2" fill="#e0f2fe"/>
+          <rect x="6" y="8" width="4" height="2" fill="#38bdf8"/>
+        </svg>
+        <span class="echo-tag">FLOR ECO</span>
+      </button>
+
+      <div id="echo-whisper" class="echo-whisper">
+        * La Flor Eco repite suavemente: "Desde que llegaste, algo cambió..."
+      </div>
+    </div>
+
+    <section class="dialogue-box" aria-label="Poema">
+      <div class="dialogue-header">
+        <svg class="soul-icon" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+          <path fill="#42e8ff" d="M2 3h3v1h2v1h2V4h2V3h3v4h-1v2h-2v2H9v2H7v-2H5V9H3V7H2V3z"/>
+        </svg>
+        <span>* ALGUIEN QUIERE DECIRTE ALGO...</span>
+      </div>
+
+      <div id="poem-content" class="poem-content">
+        <div class="stanza">
+          <span class="asterisk">*</span>
+          <p>
+            Desde que llegaste, algo cambió,<br />
+            hasta el día más gris un poco brilló.<br />
+            Tu risa se queda rondando en mi mente,<br />
+            como una canción que vuelve de repente.
+          </p>
+        </div>
+
+        <div class="stanza">
+          <span class="asterisk">*</span>
+          <p>
+            Me gusta escucharte, saber de tus días,<br />
+            tus sueños, tus libros, tus pequeñas manías;<br />
+            hablar de las <span class="highlight-word">estrellas, del cielo y del mar</span>,<br />
+            y de esas canciones que te hacen soñar.
+          </p>
+        </div>
+
+        <div class="stanza">
+          <span class="asterisk">*</span>
+          <p>
+            No quiero correr ni pedirte promesas,<br />
+            ni llenar de preguntas tus horas más quietas;<br />
+            solo quiero decirte, con toda verdad,<br />
+            que hablar contigo me da felicidad.
+          </p>
+        </div>
+
+        <div class="stanza">
+          <span class="asterisk">*</span>
+          <p>
+            Y si alguna noche te cuesta dormir,<br />
+            o el mundo se empeña en hacerte sufrir,<br />
+            recuerda que alguien, aunque lejos esté,<br />
+            <span class="highlight-word">te desea cosas bonitas y piensa en tu bien.</span>
+          </p>
+        </div>
+
+        <div class="stanza">
+          <span class="asterisk">*</span>
+          <p>
+            No sé qué nombre tendrá lo que siento,<br />
+            pero sí sé que me alegra este encuentro;<br />
+            y aunque el futuro no sepa qué hará,<br />
+            hoy me gusta mucho poderte admirar.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <div class="rpg-actions">
+      <button id="btn-save" class="rpg-btn" type="button">
+        <span class="btn-heart">💙</span>
+        <span>★ GUARDAR</span>
+      </button>
+
+      <button id="btn-music-rpg" class="rpg-btn" type="button">
+        <span class="btn-heart">💙</span>
+        <span id="rpg-music-label">♪ CANCION</span>
+      </button>
+    </div>
+
+    <div id="save-banner" class="save-banner">
+      * El brillo de las estrellas y el sonido del mar te llenan de PACIENCIA.<br />
+      * Natasha — Archivo guardado.
+    </div>
+  </main>
+
+  <div id="autoplay-notice" class="autoplay-notice">
+    💙 TOCA EN CUALQUIER PARTE PARA REPRODUCIR SONG.MP3
+  </div>
+
+  <footer>
+    <div class="seven-souls" aria-label="Las siete almas humanas">
+      <svg class="soul-item" viewBox="0 0 16 16" shape-rendering="crispEdges" title="Determinación">
+        <path fill="#ff0000" d="M2 3h3v1h2v1h2V4h2V3h3v4h-1v2h-2v2H9v2H7v-2H5V9H3V7H2V3z"/>
+      </svg>
+      <svg class="soul-item" viewBox="0 0 16 16" shape-rendering="crispEdges" title="Paciencia">
+        <path fill="#42e8ff" d="M2 3h3v1h2v1h2V4h2V3h3v4h-1v2h-2v2H9v2H7v-2H5V9H3V7H2V3z"/>
+      </svg>
+      <svg class="soul-item" viewBox="0 0 16 16" shape-rendering="crispEdges" title="Valentía">
+        <path fill="#ffa500" d="M2 3h3v1h2v1h2V4h2V3h3v4h-1v2h-2v2H9v2H7v-2H5V9H3V7H2V3z"/>
+      </svg>
+      <svg class="soul-item" viewBox="0 0 16 16" shape-rendering="crispEdges" title="Integridad">
+        <path fill="#2563eb" d="M2 3h3v1h2v1h2V4h2V3h3v4h-1v2h-2v2H9v2H7v-2H5V9H3V7H2V3z"/>
+      </svg>
+      <svg class="soul-item" viewBox="0 0 16 16" shape-rendering="crispEdges" title="Perseverancia">
+        <path fill="#c026d3" d="M2 3h3v1h2v1h2V4h2V3h3v4h-1v2h-2v2H9v2H7v-2H5V9H3V7H2V3z"/>
+      </svg>
+      <svg class="soul-item" viewBox="0 0 16 16" shape-rendering="crispEdges" title="Amabilidad">
+        <path fill="#22c55e" d="M2 3h3v1h2v1h2V4h2V3h3v4h-1v2h-2v2H9v2H7v-2H5V9H3V7H2V3z"/>
+      </svg>
+      <svg class="soul-item" viewBox="0 0 16 16" shape-rendering="crispEdges" title="Justicia">
+        <path fill="#facc15" d="M2 3h3v1h2v1h2V4h2V3h3v4h-1v2h-2v2H9v2H7v-2H5V9H3V7H2V3z"/>
+      </svg>
+    </div>
+
+    <div class="dedication">para chowi</div>
+  </footer>
+
+  <script>
+    const bgMusic = document.getElementById('bg-music');
+    const hudMusicBtn = document.getElementById('hud-music-btn');
+    const hudMusicIcon = document.getElementById('hud-music-icon');
+    const hudMusicText = document.getElementById('hud-music-text');
+    const btnMusicRpg = document.getElementById('btn-music-rpg');
+    const rpgMusicLabel = document.getElementById('rpg-music-label');
+    const autoplayNotice = document.getElementById('autoplay-notice');
+
+    bgMusic.volume = 0.6;
+
+    function updateMusicUI(isPlaying) {
+      if (isPlaying) {
+        hudMusicBtn.classList.add('playing');
+        hudMusicIcon.textContent = '❚❚';
+        hudMusicText.textContent = 'song.mp3';
+        btnMusicRpg.classList.add('active');
+        rpgMusicLabel.textContent = '❚❚ PAUSAR';
+        autoplayNotice.classList.remove('visible');
+      } else {
+        hudMusicBtn.classList.remove('playing');
+        hudMusicIcon.textContent = '▶';
+        hudMusicText.textContent = 'song.mp3';
+        btnMusicRpg.classList.remove('active');
+        rpgMusicLabel.textContent = '▶ SONG.MP3';
+      }
+    }
+
+    async function tryStartMusic() {
+      try {
+        await bgMusic.play();
+        updateMusicUI(true);
+      } catch (err) {
+        updateMusicUI(false);
+        autoplayNotice.classList.add('visible');
+      }
+    }
+
+    function toggleMusic(e) {
+      if (e) e.stopPropagation();
+      if (bgMusic.paused) {
+        bgMusic.play().then(() => updateMusicUI(true)).catch(() => {});
+      } else {
+        bgMusic.pause();
+        updateMusicUI(false);
+      }
+    }
+
+    hudMusicBtn.addEventListener('click', toggleMusic);
+    btnMusicRpg.addEventListener('click', toggleMusic);
+    autoplayNotice.addEventListener('click', toggleMusic);
+
+    function unlockAudioOnFirstInteraction() {
+      if (bgMusic.paused) {
+        bgMusic.play().then(() => {
+          updateMusicUI(true);
+        }).catch(() => {});
+      }
+      document.removeEventListener('pointerdown', unlockAudioOnFirstInteraction);
+      document.removeEventListener('keydown', unlockAudioOnFirstInteraction);
+    }
+
+    document.addEventListener('pointerdown', unlockAudioOnFirstInteraction);
+    document.addEventListener('keydown', unlockAudioOnFirstInteraction);
+    window.addEventListener('load', tryStartMusic);
+
+    const echoWhispers = [
+      '* La Flor Eco repite suavemente: "Desde que llegaste, algo cambió..."',
+      '* La Flor Eco susurra: "Hablar de las estrellas, del cielo y del mar..."',
+      '* La Flor Eco brilla en azul: "No quiero correr ni pedirte promesas..."',
+      '* La Flor Eco guarda un deseo: "Te desea cosas bonitas y piensa en tu bien."',
+      '* La Flor Eco resuena: "Hoy me gusta mucho poderte admirar."'
+    ];
+    let echoIdx = 0;
+
+    const echoFlowerBtn = document.getElementById('echo-flower-btn');
+    const echoWhisperEl = document.getElementById('echo-whisper');
+
+    echoFlowerBtn.addEventListener('click', () => {
+      echoIdx = (echoIdx + 1) % echoWhispers.length;
+      echoWhisperEl.textContent = echoWhispers[echoIdx];
+    });
+
+    const btnSave = document.getElementById('btn-save');
+    const saveBanner = document.getElementById('save-banner');
+
+    btnSave.addEventListener('click', () => {
+      saveBanner.classList.add('visible');
+      btnSave.classList.add('active');
+    });
+
+    const canvas = document.getElementById('waterfall-canvas');
+    const ctx = canvas.getContext('2d');
+    let width = 0;
+    let height = 0;
+    let crystals = [];
+    let fireflies = [];
+    let ripples = [];
+
+    function initScene() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+
+      const crystalCount = Math.min(75, Math.floor((width * height) / 15000));
+      crystals = Array.from({ length: crystalCount }, () => ({
+        x: Math.floor(Math.random() * width),
+        y: Math.floor(Math.random() * (height * 0.85)),
+        size: Math.random() > 0.72 ? 4 : 2,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.015 + Math.random() * 0.025,
+        color: Math.random() > 0.35 ? '#38bdf8' : (Math.random() > 0.5 ? '#ffffff' : '#fde047')
+      }));
+
+      fireflies = Array.from({ length: 24 }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * (height * 0.88),
+        vx: (Math.random() - 0.5) * 0.35,
+        vy: -0.15 - Math.random() * 0.25,
+        size: Math.random() > 0.5 ? 3 : 2,
+        phase: Math.random() * Math.PI * 2
+      }));
+
+      ripples = Array.from({ length: 14 }, () => ({
+        x: Math.random() * width,
+        y: height - 15 - Math.random() * 65,
+        w: 16 + Math.random() * 34,
+        speed: 0.25 + Math.random() * 0.4,
+        alpha: 0.15 + Math.random() * 0.3
+      }));
+    }
+
+    function animateScene() {
+      ctx.clearRect(0, 0, width, height);
+
+      for (const c of crystals) {
+        c.phase += c.speed;
+        const alpha = 0.25 + ((Math.sin(c.phase) + 1) / 2) * 0.75;
+        ctx.fillStyle = c.color;
+        ctx.globalAlpha = alpha;
+        ctx.fillRect(Math.floor(c.x), Math.floor(c.y), c.size, c.size);
+        if (c.size === 4 && alpha > 0.8) {
+          ctx.fillRect(Math.floor(c.x) - 2, Math.floor(c.y) + 1, 8, 2);
+          ctx.fillRect(Math.floor(c.x) + 1, Math.floor(c.y) - 2, 2, 8);
+        }
+      }
+
+      for (const f of fireflies) {
+        f.x += f.vx + Math.sin(f.phase) * 0.15;
+        f.y += f.vy;
+        f.phase += 0.03;
+        if (f.y < -10) {
+          f.y = height * 0.88;
+          f.x = Math.random() * width;
+        }
+        ctx.globalAlpha = 0.4 + ((Math.sin(f.phase) + 1) / 2) * 0.55;
+        ctx.fillStyle = '#7dd3fc';
+        ctx.fillRect(Math.floor(f.x), Math.floor(f.y), f.size, f.size);
+      }
+
+      for (const r of ripples) {
+        r.x += r.speed;
+        if (r.x > width + 40) r.x = -r.w;
+        ctx.globalAlpha = r.alpha;
+        ctx.fillStyle = '#42e8ff';
+        ctx.fillRect(Math.floor(r.x), Math.floor(r.y), Math.floor(r.w), 2);
+      }
+
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(animateScene);
+    }
+
+    window.addEventListener('resize', initScene);
+    initScene();
+    animateScene();
+  </script>
+</body>
+</html>
